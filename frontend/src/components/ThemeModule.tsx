@@ -11,6 +11,8 @@ const THEME_TABS: { key: ThemeKey; label: string }[] = [
   { key: 'cycle', label: '周期' },
 ]
 
+const ALL_SUB_SECTOR = '全部'
+
 interface Props {
   active: boolean
 }
@@ -20,7 +22,7 @@ export default function ThemeModule({ active }: Props) {
   const [data, setData] = useState<ThemeData | null>(null)
   const [sectors, setSectors] = useState<IndustrySector[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedSubSector, setSelectedSubSector] = useState<string | null>(null)
+  const [selectedSubSector, setSelectedSubSector] = useState(ALL_SUB_SECTOR)
 
   const sectorMap = useMemo(() => {
     const map: Record<string, IndustrySector> = {}
@@ -82,7 +84,7 @@ export default function ThemeModule({ active }: Props) {
   }, [active, theme, sectorMap, sectors])
 
   useEffect(() => {
-    setSelectedSubSector(null)
+    setSelectedSubSector(ALL_SUB_SECTOR)
   }, [theme])
 
   const childSectors = useMemo(() => {
@@ -99,7 +101,7 @@ export default function ThemeModule({ active }: Props) {
 
   const filteredStocks = useMemo(() => {
     const stocks = data?.stocks ?? []
-    if (!selectedSubSector) return stocks
+    if (selectedSubSector === ALL_SUB_SECTOR) return stocks
     return stocks.filter(
       (stock) =>
         stock.subSector === selectedSubSector ||
@@ -110,7 +112,7 @@ export default function ThemeModule({ active }: Props) {
   const summary = data?.summary
 
   const filteredSummary = useMemo(() => {
-    if (!selectedSubSector || !summary) return summary
+    if (selectedSubSector === ALL_SUB_SECTOR || !summary) return summary
     const selected = filteredStocks.filter((s) => s.poolStatus === 'selected').length
     const trading = filteredStocks.filter((s) => s.poolStatus === 'trading').length
     const gains = filteredStocks.map((s) => s.t3Chg).filter((v): v is number => v != null)
@@ -124,12 +126,12 @@ export default function ThemeModule({ active }: Props) {
     }
   }, [summary, selectedSubSector, filteredStocks])
 
-  const displaySummary = selectedSubSector ? filteredSummary : summary
+  const displaySummary = selectedSubSector === ALL_SUB_SECTOR ? summary : filteredSummary
   const gainCls = displaySummary && (displaySummary.avgT3Gain ?? 0) >= 0 ? 'up' : 'down'
   const dayGainCls = displaySummary && (displaySummary.avgChangePercent ?? 0) >= 0 ? 'up' : 'down'
 
-  const toggleSubSector = (name: string) => {
-    setSelectedSubSector((prev) => (prev === name ? null : name))
+  const selectSubSector = (name: string) => {
+    setSelectedSubSector(name)
   }
 
   return (
@@ -177,17 +179,27 @@ export default function ThemeModule({ active }: Props) {
               {childSectors.length === 0 ? (
                 <span className="val" style={{ fontSize: 13, fontWeight: 500 }}>—</span>
               ) : (
-                childSectors.map((name) => (
+                <>
                   <button
-                    key={name}
                     type="button"
-                    className={`theme-sub-sector${selectedSubSector === name ? ' active' : ''}`}
-                    aria-pressed={selectedSubSector === name}
-                    onClick={() => toggleSubSector(name)}
+                    className={`theme-sub-sector${selectedSubSector === ALL_SUB_SECTOR ? ' active' : ''}`}
+                    aria-pressed={selectedSubSector === ALL_SUB_SECTOR}
+                    onClick={() => selectSubSector(ALL_SUB_SECTOR)}
                   >
-                    {name}
+                    {ALL_SUB_SECTOR}
                   </button>
-                ))
+                  {childSectors.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      className={`theme-sub-sector${selectedSubSector === name ? ' active' : ''}`}
+                      aria-pressed={selectedSubSector === name}
+                      onClick={() => selectSubSector(name)}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </>
               )}
             </div>
           </div>
@@ -215,7 +227,7 @@ export default function ThemeModule({ active }: Props) {
               {loading ? (
                 <tr><td colSpan={11} style={{ padding: 24, color: 'var(--text-muted)' }}>加载中…</td></tr>
               ) : filteredStocks.length === 0 ? (
-                <tr><td colSpan={11} style={{ padding: 24, color: 'var(--text-muted)' }}>{selectedSubSector ? '该细分板块暂无标的' : '暂无数据'}</td></tr>
+                <tr><td colSpan={11} style={{ padding: 24, color: 'var(--text-muted)' }}>{selectedSubSector !== ALL_SUB_SECTOR ? '该细分板块暂无标的' : '暂无数据'}</td></tr>
               ) : (
                 filteredStocks.map((stock) => (
                   <tr key={stock.id} data-theme={theme}>
@@ -234,7 +246,7 @@ export default function ThemeModule({ active }: Props) {
         <div className="grid-footer" id="themeFooter">
           <span>
             {data?.label ?? ''}赛道 <strong>{displaySummary?.count ?? 0}</strong> 只 · 精选 <strong>{displaySummary?.selected ?? 0}</strong> 只
-            {selectedSubSector ? ` · 筛选：${selectedSubSector}` : ''}
+            {selectedSubSector !== ALL_SUB_SECTOR ? ` · 筛选：${selectedSubSector}` : ''}
           </span>
           <span>数据来源于行业板块关联（含子板块）</span>
         </div>

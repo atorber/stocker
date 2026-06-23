@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE_REPO: atorber/stocker
+  IMAGE_NAME: stocker
   CONTAINER_NAME: stocker
 
 jobs:
@@ -23,43 +23,46 @@ jobs:
       - name: Update image on remote server
         uses: appleboy/ssh-action@v1.2.0
         env:
-          IMAGE_REPO: ${{ env.IMAGE_REPO }}
-          IMAGE_TAG: ${{ inputs.image_tag }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
           CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
-          envs: IMAGE_REPO,IMAGE_TAG,CONTAINER_NAME
-          script_stop: true
+          envs: IMAGE_NAME,CONTAINER_NAME
+          script_stop: false
           script: |
-            set -euo pipefail
+            set -uo pipefail
+            IMAGE_TAG="${{ inputs.image_tag }}"
+            IMAGE_NAME="${{ env.IMAGE_NAME }}"
+            CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
 
             if ! docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
               echo "container not found: $CONTAINER_NAME"
               exit 1
             fi
 
-            IMAGE_HUB="${IMAGE_REPO}:${IMAGE_TAG}"
-            IMAGE_MIRROR="docker.1ms.run/${IMAGE_REPO}:${IMAGE_TAG}"
             RUN_IMAGE=""
+            for img in \
+              "ghcr.io/atorber/${IMAGE_NAME}:${IMAGE_TAG}" \
+              "docker.1ms.run/atorber/${IMAGE_NAME}:${IMAGE_TAG}" \
+              "atorber/${IMAGE_NAME}:${IMAGE_TAG}"; do
+              echo "Trying pull: $img"
+              if docker pull "$img"; then
+                RUN_IMAGE="$img"
+                echo "Pulled successfully: $img"
+                break
+              fi
+              echo "Pull failed: $img"
+            done
 
-            pull_image() {
-              echo "Pulling image: $1"
-              docker pull "$1"
-            }
-
-            if pull_image "$IMAGE_HUB"; then
-              RUN_IMAGE="$IMAGE_HUB"
-            elif pull_image "$IMAGE_MIRROR"; then
-              RUN_IMAGE="$IMAGE_MIRROR"
-              echo "Using mirror image: $RUN_IMAGE"
-            else
-              echo "Failed to pull from Docker Hub and mirror: $IMAGE_HUB"
+            if [ -z "$RUN_IMAGE" ]; then
+              echo "All image pull attempts failed"
               exit 1
             fi
 
+            set -e
             echo "Recreating container with existing config: $CONTAINER_NAME"
             RESTART=$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$CONTAINER_NAME")
             PORT=$(docker inspect -f '{{(index (index .NetworkSettings.Ports "8000/tcp") 0).HostPort}}' "$CONTAINER_NAME")

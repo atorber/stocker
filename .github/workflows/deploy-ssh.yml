@@ -41,17 +41,21 @@ jobs:
             echo "Recreating container with existing config: $CONTAINER_NAME"
             RESTART=$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$CONTAINER_NAME")
             PORT=$(docker inspect -f '{{(index (index .NetworkSettings.Ports "8000/tcp") 0).HostPort}}' "$CONTAINER_NAME")
-            ENV_ARGS=$(docker inspect -f '{{range .Config.Env}} -e {{quote .}}{{end}}' "$CONTAINER_NAME")
+
+            ENV_ARGS=()
+            while IFS= read -r env_line || [ -n "$env_line" ]; do
+              [ -n "$env_line" ] || continue
+              ENV_ARGS+=(-e "$env_line")
+            done < <(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$CONTAINER_NAME")
 
             docker stop "$CONTAINER_NAME"
             docker rm "$CONTAINER_NAME"
 
-            # shellcheck disable=SC2086
             docker run -d \
               --name "$CONTAINER_NAME" \
               --restart "$RESTART" \
               -p "${PORT}:8000" \
-              $ENV_ARGS \
+              "${ENV_ARGS[@]}" \
               "$IMAGE"
 
             docker ps --filter "name=^/${CONTAINER_NAME}$"

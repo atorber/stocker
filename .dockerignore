@@ -1,0 +1,14 @@
+.git
+.github
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.vite
+**/node_modules
+**/dist
+.env
+.env.*
+!.env.example
+design
+frontend/README.md
+README.md

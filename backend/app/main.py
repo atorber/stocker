@@ -4,12 +4,15 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.cache import ApiCacheMiddleware
+from app.config import settings
 from app.routers import daily_stock_pool, industry_chain, industry_sectors
 from app.services import industry_chain as industry_chain_svc, stocks
 
 app = FastAPI(title="Stocker API", version="1.0.0")
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
+app.add_middleware(ApiCacheMiddleware, ttl=settings.API_CACHE_TTL_SECONDS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

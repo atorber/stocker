@@ -34,6 +34,7 @@ class Settings:
     MYSQL_PASSWORD: str = _env("MYSQL_PASSWORD", "")
     MYSQL_DB: str = _env("MYSQL_DB", "xtrader")
     MYSQL_CHARSET: str = _env("MYSQL_CHARSET", "utf8mb4")
+    API_CACHE_TTL_SECONDS: float = float(_env("API_CACHE_TTL_SECONDS", "5"))
 
 
 settings = Settings()

@@ -2,12 +2,17 @@ name: Deploy via SSH
 
 on:
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag (default latest)'
+        required: false
+        default: latest
 
 permissions:
   contents: read
 
 env:
-  IMAGE: docker.1ms.run/atorber/stocker:latest
+  IMAGE_REPO: atorber/stocker
   CONTAINER_NAME: stocker
 
 jobs:
@@ -18,14 +23,15 @@ jobs:
       - name: Update image on remote server
         uses: appleboy/ssh-action@v1.2.0
         env:
-          IMAGE: ${{ env.IMAGE }}
+          IMAGE_REPO: ${{ env.IMAGE_REPO }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
           CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
-          envs: IMAGE,CONTAINER_NAME
+          envs: IMAGE_REPO,IMAGE_TAG,CONTAINER_NAME
           script_stop: true
           script: |
             set -euo pipefail
@@ -35,8 +41,24 @@ jobs:
               exit 1
             fi
 
-            echo "Pulling image: $IMAGE"
-            docker pull "$IMAGE"
+            IMAGE_HUB="${IMAGE_REPO}:${IMAGE_TAG}"
+            IMAGE_MIRROR="docker.1ms.run/${IMAGE_REPO}:${IMAGE_TAG}"
+            RUN_IMAGE=""
+
+            pull_image() {
+              echo "Pulling image: $1"
+              docker pull "$1"
+            }
+
+            if pull_image "$IMAGE_HUB"; then
+              RUN_IMAGE="$IMAGE_HUB"
+            elif pull_image "$IMAGE_MIRROR"; then
+              RUN_IMAGE="$IMAGE_MIRROR"
+              echo "Using mirror image: $RUN_IMAGE"
+            else
+              echo "Failed to pull from Docker Hub and mirror: $IMAGE_HUB"
+              exit 1
+            fi
 
             echo "Recreating container with existing config: $CONTAINER_NAME"
             RESTART=$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$CONTAINER_NAME")
@@ -56,6 +78,6 @@ jobs:
               --restart "$RESTART" \
               -p "${PORT}:8000" \
               "${ENV_ARGS[@]}" \
-              "$IMAGE"
+              "$RUN_IMAGE"
 
             docker ps --filter "name=^/${CONTAINER_NAME}$"

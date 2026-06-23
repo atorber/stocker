@@ -1,0 +1,57 @@
+name: Deploy via SSH
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: docker.1ms.run/atorber/stocker:latest
+  CONTAINER_NAME: stocker
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Update image on remote server
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE: ${{ env.IMAGE }}
+          CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          envs: IMAGE,CONTAINER_NAME
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            if ! docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
+              echo "container not found: $CONTAINER_NAME"
+              exit 1
+            fi
+
+            echo "Pulling image: $IMAGE"
+            docker pull "$IMAGE"
+
+            echo "Recreating container with existing config: $CONTAINER_NAME"
+            RESTART=$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$CONTAINER_NAME")
+            PORT=$(docker inspect -f '{{(index (index .NetworkSettings.Ports "8000/tcp") 0).HostPort}}' "$CONTAINER_NAME")
+            ENV_ARGS=$(docker inspect -f '{{range .Config.Env}} -e {{quote .}}{{end}}' "$CONTAINER_NAME")
+
+            docker stop "$CONTAINER_NAME"
+            docker rm "$CONTAINER_NAME"
+
+            # shellcheck disable=SC2086
+            docker run -d \
+              --name "$CONTAINER_NAME" \
+              --restart "$RESTART" \
+              -p "${PORT}:8000" \
+              $ENV_ARGS \
+              "$IMAGE"
+
+            docker ps --filter "name=^/${CONTAINER_NAME}$"

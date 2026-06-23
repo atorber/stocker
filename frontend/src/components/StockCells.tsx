@@ -1,27 +1,6 @@
 import { fmtPct, fmtPrice, pctClass } from '../utils/format'
 import type { StockItem } from '../types'
 
-const ICON_PROMOTE = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M12 19V5M5 12l7-7 7 7" />
-  </svg>
-)
-const ICON_DEMOTE = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M12 5v14M5 12l7 7 7-7" />
-  </svg>
-)
-const ICON_REMOVE = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-  </svg>
-)
-const ICON_SETTINGS = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="3" />
-  </svg>
-)
-
 export function StockIdentity({ stock }: { stock: StockItem }) {
   return (
     <div className="stock-id">
@@ -80,45 +59,6 @@ export function PriceCell({
   return <span className={`price-val mono ${cls}`}>{fmtPrice(value)}</span>
 }
 
-export function RowActions({
-  trading = false,
-  onToast,
-  stock,
-}: {
-  trading?: boolean
-  onToast: (msg: string) => void
-  stock: StockItem
-}) {
-  if (trading) {
-    return (
-      <div className="row-actions">
-        <button className="action-icon demote" title="降级" onClick={() => onToast(`降级：${stock.name}`)}>
-          {ICON_DEMOTE}
-        </button>
-        <button className="action-icon settings" title="交易设置" onClick={() => onToast(`交易设置：${stock.name}`)}>
-          {ICON_SETTINGS}
-        </button>
-      </div>
-    )
-  }
-  return (
-    <div className="row-actions">
-      <button className="action-icon promote" title="晋级至交易池" onClick={() => onToast(`晋级：${stock.name}`)}>
-        {ICON_PROMOTE}
-      </button>
-      <button className="action-icon demote" title="降级至基础池" onClick={() => onToast(`降级：${stock.name}`)}>
-        {ICON_DEMOTE}
-      </button>
-      <button className="action-icon remove" title="剔除" onClick={() => onToast(`剔除：${stock.name}`)}>
-        {ICON_REMOVE}
-      </button>
-      <button className="action-icon settings" title="交易设置" onClick={() => onToast(`交易设置：${stock.name}`)}>
-        {ICON_SETTINGS}
-      </button>
-    </div>
-  )
-}
-
 export function GainColumns({ stock }: { stock: StockItem }) {
   return (
     <>
@@ -159,7 +99,6 @@ export function GridHead({ trading = false }: { trading?: boolean }) {
         <th className="col-gain-group" colSpan={6}>累计涨幅</th>
         {trading && <th className="col-num" rowSpan={2}>止盈偏离</th>}
         <th rowSpan={2} style={{ width: 64 }}>池状态</th>
-        <th className="col-actions" rowSpan={2}></th>
       </tr>
       <tr className="sub-head">
         <th className="col-num">当日</th>

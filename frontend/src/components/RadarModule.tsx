@@ -78,7 +78,6 @@ export default function RadarModule({ active, onToast }: Props) {
                 <th className="num" rowSpan={2}>入池价</th>
                 <th className="col-gain-group" colSpan={6}>累计涨幅</th>
                 <th rowSpan={2}>量能</th>
-                <th rowSpan={2} style={{ width: 180 }}></th>
               </tr>
               <tr className="sub-head" id="radarSubHead">
                 {SORT_LABELS.map((label) => (
@@ -115,12 +114,6 @@ export default function RadarModule({ active, onToast }: Props) {
                       )
                     })}
                     <td><VolumeCell stock={stock} /></td>
-                    <td>
-                      <div className="row-actions">
-                        <button className="act-btn" onClick={() => onToast(`已移入精选池：${stock.name}`)}>移入精选池</button>
-                        <button className="act-btn primary" onClick={() => onToast(`准备交易：${stock.name}`)}>准备交易</button>
-                      </div>
-                    </td>
                   </tr>
                 )
               })}

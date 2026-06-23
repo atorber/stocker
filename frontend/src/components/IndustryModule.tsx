@@ -85,29 +85,24 @@ export default function IndustryModule({ active, onToast }: Props) {
             ) : (
               <div className="chain-list">
                 {chainItems.map((chain) => (
-                  <div
+                  <button
                     key={chain.id}
-                    className={`chain-list-item${viewedChainId === chain.id ? ' active' : ''}`}
+                    type="button"
+                    className={`chain-card${viewedChainId === chain.id ? ' active' : ''}`}
+                    onClick={() => {
+                      if (viewedChainId !== chain.id) loadGraphData(chain.id)
+                    }}
                   >
-                    <div className="chain-list-main">
-                      <span className="chain-list-name">{chain.name}</span>
-                      {chain.industry_category ? (
-                        <span className="chain-list-category">{chain.industry_category}</span>
-                      ) : null}
-                    </div>
-                    <button
-                      type="button"
-                      className="chain-list-view"
-                      onClick={() => loadGraphData(chain.id)}
-                    >
-                      查看
-                    </button>
-                  </div>
+                    <span className="chain-card-name">{chain.name}</span>
+                    {chain.industry_category ? (
+                      <span className="chain-card-category">{chain.industry_category}</span>
+                    ) : null}
+                  </button>
                 ))}
               </div>
             )}
           </div>
-          <div className="brief-scroll" id="briefContent">
+          <div className="chain-brief-footer" id="briefContent">
             {!viewedChainId && !listLoading ? (
               <p className="chain-list-empty">暂无产业链数据</p>
             ) : graphLoading || (listLoading && !viewedChainId) ? (
@@ -117,17 +112,6 @@ export default function IndustryModule({ active, onToast }: Props) {
                 <div className="phase-row">
                   <span className="phase-tag">{detail.phase}</span>
                   <SectorTag sector={detail.sectorKey} label={detail.sectorLabel} />
-                </div>
-                <h2 className="brief-h2">{detail.title}</h2>
-                <div className="brief-block">
-                  <h3>逻辑概述</h3>
-                  <p>{detail.description}</p>
-                </div>
-                <div className="brief-block">
-                  <h3>核心驱动要素</h3>
-                  <ul className="driver-list">
-                    {detail.drivers.map((d) => <li key={d}>{d}</li>)}
-                  </ul>
                 </div>
                 <div className="coverage-stat">
                   <div className="item">

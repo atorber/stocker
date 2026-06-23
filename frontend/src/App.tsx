@@ -58,8 +58,8 @@ export default function App() {
         <div className="header-meta mono">{headerDate}</div>
       </header>
 
-      <PoolModule active={module === 'pool'} meta={meta} onToast={showToast} />
-      <ThemeModule active={module === 'theme'} onToast={showToast} />
+      <PoolModule active={module === 'pool'} meta={meta} />
+      <ThemeModule active={module === 'theme'} />
       <IndustryModule active={module === 'industry'} onToast={showToast} />
       <RadarModule active={module === 'radar'} onToast={showToast} />
 

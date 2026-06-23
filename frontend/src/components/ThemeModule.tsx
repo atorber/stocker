@@ -13,10 +13,9 @@ const THEME_TABS: { key: ThemeKey; label: string }[] = [
 
 interface Props {
   active: boolean
-  onToast: (msg: string) => void
 }
 
-export default function ThemeModule({ active, onToast }: Props) {
+export default function ThemeModule({ active }: Props) {
   const [theme, setTheme] = useState<ThemeKey>('tech')
   const [data, setData] = useState<ThemeData | null>(null)
   const [sectors, setSectors] = useState<IndustrySector[]>([])
@@ -206,7 +205,6 @@ export default function ThemeModule({ active, onToast }: Props) {
                 <th className="col-num" rowSpan={2}>入池价</th>
                 <th className="col-gain-group" colSpan={6}>累计涨幅</th>
                 <th rowSpan={2}>池状态</th>
-                <th className="col-actions" rowSpan={2}></th>
               </tr>
               <tr className="sub-head">
                 <th className="col-num">当日</th><th className="col-num">2日</th><th className="col-num">3日</th>
@@ -215,9 +213,9 @@ export default function ThemeModule({ active, onToast }: Props) {
             </thead>
             <tbody id="themeTableBody">
               {loading ? (
-                <tr><td colSpan={12} style={{ padding: 24, color: 'var(--text-muted)' }}>加载中…</td></tr>
+                <tr><td colSpan={11} style={{ padding: 24, color: 'var(--text-muted)' }}>加载中…</td></tr>
               ) : filteredStocks.length === 0 ? (
-                <tr><td colSpan={12} style={{ padding: 24, color: 'var(--text-muted)' }}>{selectedSubSector ? '该细分板块暂无标的' : '暂无数据'}</td></tr>
+                <tr><td colSpan={11} style={{ padding: 24, color: 'var(--text-muted)' }}>{selectedSubSector ? '该细分板块暂无标的' : '暂无数据'}</td></tr>
               ) : (
                 filteredStocks.map((stock) => (
                   <tr key={stock.id} data-theme={theme}>
@@ -227,13 +225,6 @@ export default function ThemeModule({ active, onToast }: Props) {
                     <td className="col-num"><span className="entry-val mono">{fmtPrice(stock.entryPrice)}</span></td>
                     <GainColumns stock={stock} />
                     <td><PoolCapsule status={stock.poolStatus} label={stock.poolStatusLabel} /></td>
-                    <td className="col-actions">
-                      <div className="row-actions">
-                        <button className="action-icon promote" title="晋级" onClick={() => onToast(`晋级：${stock.name}`)}>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))
               )}

@@ -7,7 +7,6 @@ import {
   GridHead,
   PoolCapsule,
   PriceCell,
-  RowActions,
   SectorTag,
   StockIdentity,
 } from './StockCells'
@@ -16,10 +15,9 @@ import { fmtPrice } from '../utils/format'
 interface Props {
   active: boolean
   meta: Meta | null
-  onToast: (msg: string) => void
 }
 
-export default function PoolModule({ active, meta, onToast }: Props) {
+export default function PoolModule({ active, meta }: Props) {
   const [poolIndex, setPoolIndex] = useState(0)
   const [search, setSearch] = useState('')
   const [items, setItems] = useState<StockItem[]>([])
@@ -163,9 +161,9 @@ export default function PoolModule({ active, meta, onToast }: Props) {
             <GridHead />
             <tbody>
               {loading ? (
-                <tr><td colSpan={13} style={{ padding: 24, color: 'var(--text-muted)' }}>加载中…</td></tr>
+                <tr><td colSpan={12} style={{ padding: 24, color: 'var(--text-muted)' }}>加载中…</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={13} style={{ padding: 24, color: 'var(--text-muted)' }}>暂无数据</td></tr>
+                <tr><td colSpan={12} style={{ padding: 24, color: 'var(--text-muted)' }}>暂无数据</td></tr>
               ) : (
                 items.map((stock) => (
                   <tr key={stock.id}>
@@ -176,7 +174,6 @@ export default function PoolModule({ active, meta, onToast }: Props) {
                     <td className="col-num"><span className="entry-val mono">{fmtPrice(stock.entryPrice)}</span></td>
                     <GainColumns stock={stock} />
                     <td><PoolCapsule status={stock.poolStatus} label={stock.poolStatusLabel} /></td>
-                    <td className="col-actions"><RowActions stock={stock} onToast={onToast} /></td>
                   </tr>
                 ))
               )}
@@ -199,7 +196,7 @@ export default function PoolModule({ active, meta, onToast }: Props) {
             <GridHead trading />
             <tbody>
               {loading ? (
-                <tr><td colSpan={15} style={{ padding: 24, color: 'var(--text-muted)' }}>加载中…</td></tr>
+                <tr><td colSpan={14} style={{ padding: 24, color: 'var(--text-muted)' }}>加载中…</td></tr>
               ) : (
                 items.map((stock) => (
                   <tr key={stock.id} className={stock.tpHit ? 'tp-hit' : ''}>
@@ -223,7 +220,6 @@ export default function PoolModule({ active, meta, onToast }: Props) {
                       )}
                     </td>
                     <td><PoolCapsule status={stock.poolStatus} label={stock.poolStatusLabel} /></td>
-                    <td className="col-actions"><RowActions trading stock={stock} onToast={onToast} /></td>
                   </tr>
                 ))
               )}

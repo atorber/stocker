@@ -9,7 +9,7 @@ import type { Meta, ModuleType } from './types'
 const NAV: { key: ModuleType; label: string }[] = [
   { key: 'pool', label: '股票池' },
   { key: 'theme', label: '主题方向' },
-  { key: 'industry', label: '产业链研判' },
+  { key: 'industry', label: '产业链图谱' },
   { key: 'radar', label: '动能排行' },
 ]
 

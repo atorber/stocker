@@ -107,7 +107,10 @@ export interface ChainGraphNode {
   description?: string | null
   position_x?: number | null
   position_y?: number | null
+  created_at?: string | null
+  updated_at?: string | null
   segment_name?: string
+  /** stocker 扩展：股票池状态与行情 */
   segment_type?: string | null
   segment_order?: number
   isInBasic?: boolean
@@ -127,6 +130,8 @@ export interface ChainGraphData {
     order_index: number
     description?: string | null
     segment_type?: string | null
+    created_at?: string | null
+    updated_at?: string | null
   }>
   nodes: ChainGraphNode[]
   relationships: unknown[]

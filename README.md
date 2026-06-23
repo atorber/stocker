@@ -1,6 +1,6 @@
 # Stocker
 
-A股极简趋势交易 Web 应用 — 选赛道 · 做减法 · 看长做短。
+A股趋势交易 Web 应用 — 选赛道 · 做减法 · 看长做短。
 
 ## 技术栈
 
@@ -48,7 +48,7 @@ npm run dev
 |------|------|
 | `GET /api/meta` | 顶栏日期、各池数量 |
 | `GET /api/pools/{daily\|basic\|selected\|trading}` | 基础/精选/交易股票池列表 |
-| `GET /api/daily-stock-pool/stocks/by-date/{date}/grid` | 每日备选池（按研报日期） |
+| `GET /api/daily-stock-pool/stocks/by-date/{date}/grid` | 每日更新池（按研报日期） |
 | `GET /api/daily-stock-pool/dates` | 有研报的可用日期列表 |
 | `GET /api/daily-stock-pool/stocks/by-date/{date}` | 与 xtrader 兼容的研报统计接口 |
 | `GET /api/themes/{finance\|consumer\|cycle\|tech}` | 主题方向 |
@@ -58,7 +58,7 @@ npm run dev
 
 ## 数据适配说明
 
-- **每日备选池**：按研报 `publish_date` 从 `research_reports.extracted_stocks` 聚合，与 xtrader `/api/daily-stock-pool` 逻辑一致
+- **每日更新池**：按研报 `publish_date` 从 `research_reports.extracted_stocks` 聚合，与 xtrader `/api/daily-stock-pool` 逻辑一致
 - **入池价**：优先 `close_t5`，否则 `pre_close`，再否则按现价 × 0.92 估算
 - **成本价**：来自 `trade_record` 最近买入记录，无则用入池价
 - **大方向/细分**：来自 `stock_sector_relations`，未关联时默认「科技 / —」

@@ -12,11 +12,17 @@ import type {
   ThemeData,
   ThemeKey,
 } from '../types'
+import { buildChainDetailFromGraph, parseIndustryChainGraph } from '../utils/industryChain'
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path)
   if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`)
   return res.json()
+}
+
+async function getIndustryChainData<T>(path: string): Promise<T> {
+  const res = await get<{ code: number; message: string; data: T }>(path)
+  return res.data
 }
 
 export const api = {
@@ -45,6 +51,7 @@ export const api = {
   industryChainList: (page = 1, pageSize = 100, keyword = '') =>
     get<{
       code: number
+      message: string
       data: ChainItem[]
       total: number
       page: number
@@ -53,10 +60,25 @@ export const api = {
     }>(
       `/api/industry-chain/list?page=${page}&page_size=${pageSize}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}`,
     ),
+  /** xtrader 兼容：GET /api/industry-chain/{id}/graph-data */
+  industryChainGraphData: (chainId: string) =>
+    getIndustryChainData<ChainGraphData>(`/api/industry-chain/${chainId}/graph-data`),
   industryChainGraph: (chainId: string) =>
-    get<{ code: number; data: ChainGraphData }>(`/api/industry-chain/${chainId}/graph-data`),
-  industryChainView: (chainId: string) => get<ChainDetail>(`/api/industry-chain/${chainId}/view`),
+    get<{ code: number; message: string; data: ChainGraphData }>(`/api/industry-chain/${chainId}/graph-data`),
+  industryChainView: async (chainId: string): Promise<ChainDetail> => {
+    const graph = await getIndustryChainData<ChainGraphData>(`/api/industry-chain/${chainId}/graph-data`)
+    return buildChainDetailFromGraph(graph)
+  },
+  industryChainDetail: (chainId: string) =>
+    getIndustryChainData<ChainItem & { segments?: unknown[]; relationships?: unknown[] }>(
+      `/api/industry-chain/${chainId}`,
+    ),
   chains: () => get<{ chains: { id: string; name: string }[] }>('/api/industry/chains'),
-  chain: (id: string) => get<ChainDetail>(`/api/industry-chain/${id}/view`),
+  chain: async (id: string) => {
+    const graph = parseIndustryChainGraph(
+      await get<{ code: number; message: string; data: ChainGraphData }>(`/api/industry-chain/${id}/graph-data`),
+    )
+    return buildChainDetailFromGraph(graph)
+  },
   radar: (sort: string, limit = 10) => get<RadarData>(`/api/radar?sort=${sort}&limit=${limit}`),
 }

@@ -573,6 +573,54 @@
     .industry-layout { flex: 1; display: flex; overflow: hidden; padding: 0 32px 24px; min-height: 0; }
     .brief-panel { width: 360px; min-width: 300px; flex-shrink: 0; display: flex; flex-direction: column; padding-right: 28px; overflow: hidden; }
     .chain-select { margin-bottom: 20px; }
+    .chain-list-wrap { margin-bottom: 16px; flex-shrink: 0; }
+    .chain-list-label { display: block; font-size: 11px; color: var(--text-dim); letter-spacing: 0.04em; margin-bottom: 8px; }
+    .chain-list-empty { font-size: 12px; color: var(--text-muted); padding: 8px 0; }
+    .chain-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .chain-list::-webkit-scrollbar { width: 3px; }
+    .chain-list::-webkit-scrollbar-thumb { background: var(--line-subtle); border-radius: 2px; }
+    .chain-list-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--bg-raised);
+      border-radius: 6px;
+      border: 1px solid transparent;
+    }
+    .chain-list-item.active { border-color: rgba(86, 211, 100, 0.35); background: var(--bg-hover); }
+    .chain-list-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .chain-list-name { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chain-list-category { font-size: 11px; color: var(--text-muted); }
+    .chain-list-view {
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--sector-tech-text);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .chain-list-view:hover { background: var(--bg-active); }
+    .topology-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
     .chain-select label { display: block; font-size: 11px; color: var(--text-dim); letter-spacing: 0.04em; margin-bottom: 8px; }
     .chain-select select {
       width: 100%; padding: 8px 12px; background: var(--bg-raised); border: none; border-radius: 6px;
@@ -606,8 +654,10 @@
     .legend-item { display: flex; align-items: center; gap: 6px; }
     .legend-dot { width: 8px; height: 8px; border-radius: 2px; background: var(--bg-raised); border: 1px solid var(--line-subtle); }
     .legend-dot.tracked { border: 1.5px solid var(--red-up); background: transparent; box-shadow: 0 0 6px rgba(246,70,93,0.4); }
-    .topology-wrap { flex: 1; position: relative; background: var(--bg-canvas); border-radius: 8px; overflow: hidden; min-height: 0; }
-    .grid-bg { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 48px 48px; }
+    .topology-wrap { flex: 1; position: relative; display: flex; flex-direction: column; background: var(--bg-canvas); border-radius: 8px; overflow: hidden; min-height: 0; padding: 20px; box-sizing: border-box; }
+    .grid-bg { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 48px 48px; pointer-events: none; }
+    .chain-treemap-wrap { flex: 1; position: relative; width: 100%; min-height: 0; min-width: 0; box-sizing: border-box; }
+    .chain-treemap { position: absolute; inset: 0; width: 100%; height: 100%; box-sizing: border-box; pointer-events: none; }
     .topology-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
     .topo-node { cursor: pointer; }
     .topo-node:hover .node-rect { filter: brightness(1.12); }
@@ -684,6 +734,35 @@
     .theme-summary .item { display: flex; flex-direction: column; gap: 2px; }
     .theme-summary .label { font-size: 11px; color: var(--text-dim); }
     .theme-summary .val { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .theme-sub-sector-item { min-width: 0; flex: 1; }
+    .theme-sub-sectors {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+    }
+    .theme-sub-sector {
+      padding: 3px 10px;
+      border: 1px solid var(--line-subtle);
+      background: var(--bg-raised);
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .theme-sub-sector:hover {
+      color: var(--text-primary);
+      border-color: rgba(255, 255, 255, 0.12);
+      background: var(--bg-hover);
+    }
+    .theme-sub-sector.active {
+      color: var(--text-primary);
+      border-color: var(--sector-tech-text);
+      background: var(--bg-active);
+    }
     .theme-brief {
       padding: 12px 4px 16px;
       font-size: 13px;

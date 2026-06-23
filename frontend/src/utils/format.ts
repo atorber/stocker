@@ -35,5 +35,5 @@ export const SORT_API_MAP: Record<string, string> = {
   '10日': 't_10',
 }
 
-export const POOL_NAMES = ['每日备选池', '基础股票池', '精选股票池', '交易股票池'] as const
+export const POOL_NAMES = ['每日更新池', '基础股票池', '精选股票池', '交易股票池'] as const
 export const POOL_TYPES = ['daily', 'basic', 'selected', 'trading'] as const

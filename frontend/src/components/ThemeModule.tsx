@@ -5,10 +5,10 @@ import { fmtPct, fmtPrice } from '../utils/format'
 import { GainColumns, PoolCapsule, PriceCell, StockIdentity } from './StockCells'
 
 const THEME_TABS: { key: ThemeKey; label: string }[] = [
+  { key: 'tech', label: '科技' },
   { key: 'finance', label: '大金融' },
   { key: 'consumer', label: '消费' },
   { key: 'cycle', label: '周期' },
-  { key: 'tech', label: '科技' },
 ]
 
 interface Props {
@@ -21,6 +21,7 @@ export default function ThemeModule({ active, onToast }: Props) {
   const [data, setData] = useState<ThemeData | null>(null)
   const [sectors, setSectors] = useState<IndustrySector[]>([])
   const [loading, setLoading] = useState(false)
+  const [selectedSubSector, setSelectedSubSector] = useState<string | null>(null)
 
   const sectorMap = useMemo(() => {
     const map: Record<string, IndustrySector> = {}
@@ -81,9 +82,56 @@ export default function ThemeModule({ active, onToast }: Props) {
     }
   }, [active, theme, sectorMap, sectors])
 
+  useEffect(() => {
+    setSelectedSubSector(null)
+  }, [theme])
+
+  const childSectors = useMemo(() => {
+    const parent = sectorMap[theme]
+    const fromApi = parent
+      ? sectors
+          .filter((s) => s.parentId === parent.id)
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((s) => s.name)
+      : []
+    if (fromApi.length) return fromApi
+    return [...new Set((data?.stocks ?? []).map((s) => s.subSector).filter((s) => s && s !== '—'))].sort()
+  }, [sectors, sectorMap, theme, data?.stocks])
+
+  const filteredStocks = useMemo(() => {
+    const stocks = data?.stocks ?? []
+    if (!selectedSubSector) return stocks
+    return stocks.filter(
+      (stock) =>
+        stock.subSector === selectedSubSector ||
+        stock.subSector.split(' · ').includes(selectedSubSector),
+    )
+  }, [data?.stocks, selectedSubSector])
+
   const summary = data?.summary
-  const gainCls = summary && (summary.avgT3Gain ?? 0) >= 0 ? 'up' : 'down'
-  const dayGainCls = summary && (summary.avgChangePercent ?? 0) >= 0 ? 'up' : 'down'
+
+  const filteredSummary = useMemo(() => {
+    if (!selectedSubSector || !summary) return summary
+    const selected = filteredStocks.filter((s) => s.poolStatus === 'selected').length
+    const trading = filteredStocks.filter((s) => s.poolStatus === 'trading').length
+    const gains = filteredStocks.map((s) => s.t3Chg).filter((v): v is number => v != null)
+    const avgT3 = gains.length ? Math.round((gains.reduce((a, b) => a + b, 0) / gains.length) * 10) / 10 : 0
+    return {
+      ...summary,
+      count: filteredStocks.length,
+      selected,
+      trading,
+      avgT3Gain: avgT3,
+    }
+  }, [summary, selectedSubSector, filteredStocks])
+
+  const displaySummary = selectedSubSector ? filteredSummary : summary
+  const gainCls = displaySummary && (displaySummary.avgT3Gain ?? 0) >= 0 ? 'up' : 'down'
+  const dayGainCls = displaySummary && (displaySummary.avgChangePercent ?? 0) >= 0 ? 'up' : 'down'
+
+  const toggleSubSector = (name: string) => {
+    setSelectedSubSector((prev) => (prev === name ? null : name))
+  }
 
   return (
     <section className={`module-panel${active ? ' active' : ''}`} id="module-theme">
@@ -112,19 +160,38 @@ export default function ThemeModule({ active, onToast }: Props) {
           </div>
         </div>
         <div className="theme-summary" id="themeSummary">
-          <div className="item"><span className="label">池内标的</span><span className="val mono">{summary?.count ?? '—'}</span></div>
-          <div className="item"><span className="label">精选 / 交易</span><span className="val mono">{summary ? `${summary.selected} / ${summary.trading}` : '—'}</span></div>
+          <div className="item"><span className="label">池内标的</span><span className="val mono">{displaySummary?.count ?? '—'}</span></div>
+          <div className="item"><span className="label">精选 / 交易</span><span className="val mono">{displaySummary ? `${displaySummary.selected} / ${displaySummary.trading}` : '—'}</span></div>
           <div className="item">
             <span className="label">近3日均涨幅</span>
-            <span className={`val mono ${gainCls}`}>{summary ? fmtPct(summary.avgT3Gain) : '—'}</span>
+            <span className={`val mono ${gainCls}`}>{displaySummary ? fmtPct(displaySummary.avgT3Gain) : '—'}</span>
           </div>
           <div className="item">
             <span className="label">板块当日均涨幅</span>
             <span className={`val mono ${dayGainCls}`}>
-              {summary?.avgChangePercent != null ? fmtPct(summary.avgChangePercent) : '—'}
+              {displaySummary?.avgChangePercent != null ? fmtPct(displaySummary.avgChangePercent) : '—'}
             </span>
           </div>
-          <div className="item"><span className="label">细分板块</span><span className="val" style={{ fontSize: 13, fontWeight: 500 }}>{summary?.sectors ?? '—'}</span></div>
+          <div className="item theme-sub-sector-item">
+            <span className="label">细分板块</span>
+            <div className="theme-sub-sectors" role="group" aria-label="细分板块筛选">
+              {childSectors.length === 0 ? (
+                <span className="val" style={{ fontSize: 13, fontWeight: 500 }}>—</span>
+              ) : (
+                childSectors.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className={`theme-sub-sector${selectedSubSector === name ? ' active' : ''}`}
+                    aria-pressed={selectedSubSector === name}
+                    onClick={() => toggleSubSector(name)}
+                  >
+                    {name}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         </div>
         <p className="theme-brief" id="themeBrief">
           <strong>逻辑概要：</strong>{data?.brief || '—'}
@@ -149,10 +216,10 @@ export default function ThemeModule({ active, onToast }: Props) {
             <tbody id="themeTableBody">
               {loading ? (
                 <tr><td colSpan={12} style={{ padding: 24, color: 'var(--text-muted)' }}>加载中…</td></tr>
-              ) : (data?.stocks ?? []).length === 0 ? (
-                <tr><td colSpan={12} style={{ padding: 24, color: 'var(--text-muted)' }}>暂无数据</td></tr>
+              ) : filteredStocks.length === 0 ? (
+                <tr><td colSpan={12} style={{ padding: 24, color: 'var(--text-muted)' }}>{selectedSubSector ? '该细分板块暂无标的' : '暂无数据'}</td></tr>
               ) : (
-                (data?.stocks ?? []).map((stock) => (
+                filteredStocks.map((stock) => (
                   <tr key={stock.id} data-theme={theme}>
                     <td className="col-sticky"><StockIdentity stock={stock} /></td>
                     <td><span className="sub-sector">{stock.subSector}</span></td>
@@ -174,7 +241,10 @@ export default function ThemeModule({ active, onToast }: Props) {
           </table>
         </div>
         <div className="grid-footer" id="themeFooter">
-          <span>{data?.label ?? ''}赛道 <strong>{summary?.count ?? 0}</strong> 只 · 精选 <strong>{summary?.selected ?? 0}</strong> 只</span>
+          <span>
+            {data?.label ?? ''}赛道 <strong>{displaySummary?.count ?? 0}</strong> 只 · 精选 <strong>{displaySummary?.selected ?? 0}</strong> 只
+            {selectedSubSector ? ` · 筛选：${selectedSubSector}` : ''}
+          </span>
           <span>数据来源于行业板块关联（含子板块）</span>
         </div>
       </main>

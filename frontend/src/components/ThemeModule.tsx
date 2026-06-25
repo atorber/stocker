@@ -1,7 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
-import type { IndustrySector, ThemeData, ThemeKey } from '../types'
+import type { IndustrySectorTreeNode, StockItem, ThemeData, ThemeKey } from '../types'
 import { fmtPct, fmtPrice } from '../utils/format'
+import {
+  ALL_SUB_SECTOR,
+  buildSectorFilterLabel,
+  findThemeRoot,
+  findTreeNode,
+  sortSectorNodes,
+} from '../utils/themeSectors'
+import { getUrlParam, parseThemeTab, patchUrlParams, usePopstate } from '../utils/urlParams'
 import { GainColumns, PoolCapsule, PriceCell, StockIdentity } from './StockCells'
 
 const THEME_TABS: { key: ThemeKey; label: string }[] = [
@@ -11,34 +19,57 @@ const THEME_TABS: { key: ThemeKey; label: string }[] = [
   { key: 'cycle', label: '周期' },
 ]
 
-const ALL_SUB_SECTOR = '全部'
-
 interface Props {
   active: boolean
 }
 
 export default function ThemeModule({ active }: Props) {
-  const [theme, setTheme] = useState<ThemeKey>('tech')
+  const [theme, setThemeState] = useState<ThemeKey>(() => parseThemeTab())
   const [data, setData] = useState<ThemeData | null>(null)
-  const [sectors, setSectors] = useState<IndustrySector[]>([])
+  const [sectorTree, setSectorTree] = useState<IndustrySectorTreeNode[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedSubSector, setSelectedSubSector] = useState(ALL_SUB_SECTOR)
+  const [primarySectorId, setPrimarySectorId] = useState<string | null>(() => getUrlParam('sector'))
+  const [childSectorId, setChildSectorId] = useState<string | null>(() => getUrlParam('sub'))
+  const [sectorFilterStocks, setSectorFilterStocks] = useState<StockItem[] | null>(null)
+  const [filterLoading, setFilterLoading] = useState(false)
 
   const sectorMap = useMemo(() => {
-    const map: Record<string, IndustrySector> = {}
-    sectors.forEach((s) => {
-      if (!s.parentId && THEME_TABS.some((t) => t.label === s.name)) {
-        const key = THEME_TABS.find((t) => t.label === s.name)?.key
-        if (key) map[key] = s
-      }
+    const map: Partial<Record<ThemeKey, IndustrySectorTreeNode>> = {}
+    THEME_TABS.forEach((tab) => {
+      const root = findThemeRoot(sectorTree, tab.key, tab.label)
+      if (root) map[tab.key] = root
     })
     return map
-  }, [sectors])
+  }, [sectorTree])
+
+  const themeRoot = sectorMap[theme] ?? null
+  const level1Sectors = useMemo(
+    () => sortSectorNodes(themeRoot?.children ?? []),
+    [themeRoot],
+  )
+
+  const primarySector = primarySectorId && themeRoot
+    ? findTreeNode([themeRoot], primarySectorId)
+    : null
+  const childSectors = useMemo(
+    () => sortSectorNodes(primarySector?.children ?? []),
+    [primarySector],
+  )
+
+  const filterNode = useMemo(() => {
+    if (!primarySectorId || !themeRoot) return null
+    const primary = findTreeNode([themeRoot], primarySectorId)
+    if (!primary) return null
+    if (childSectorId) {
+      return findTreeNode([primary], childSectorId) ?? primary
+    }
+    return primary
+  }, [primarySectorId, childSectorId, themeRoot])
 
   useEffect(() => {
     if (!active) return
-    api.sectors(1, 10000).then((res) => {
-      setSectors(res.data ?? [])
+    api.sectorsTree().then((res) => {
+      setSectorTree(res.data ?? [])
     })
   }, [active])
 
@@ -56,9 +87,7 @@ export default function ThemeModule({ active }: Props) {
           const trading = items.filter((s) => s.poolStatus === 'trading').length
           const gains = items.map((s) => s.t3Chg).filter((v): v is number => v != null)
           const avgT3 = gains.length ? Math.round((gains.reduce((a, b) => a + b, 0) / gains.length) * 10) / 10 : 0
-          const childNames = sectors
-            .filter((s) => s.parentId === sector.id)
-            .map((s) => s.name)
+          const childNames = sortSectorNodes(sector.children ?? []).map((s) => s.name)
           setData({
             theme,
             label: sector.name,
@@ -81,57 +110,91 @@ export default function ThemeModule({ active }: Props) {
     } else {
       api.theme(theme).then(setData).finally(() => setLoading(false))
     }
-  }, [active, theme, sectorMap, sectors])
+  }, [active, theme, sectorMap])
+
+  const syncThemeFromUrl = useCallback(() => {
+    if (!active) return
+    setThemeState(parseThemeTab())
+    setPrimarySectorId(getUrlParam('sector'))
+    setChildSectorId(getUrlParam('sub'))
+    setSectorFilterStocks(null)
+  }, [active])
+  usePopstate(syncThemeFromUrl)
 
   useEffect(() => {
-    setSelectedSubSector(ALL_SUB_SECTOR)
-  }, [theme])
+    if (active) syncThemeFromUrl()
+  }, [active, syncThemeFromUrl])
 
-  const childSectors = useMemo(() => {
-    const parent = sectorMap[theme]
-    const fromApi = parent
-      ? sectors
-          .filter((s) => s.parentId === parent.id)
-          .sort((a, b) => a.sortOrder - b.sortOrder)
-          .map((s) => s.name)
-      : []
-    if (fromApi.length) return fromApi
-    return [...new Set((data?.stocks ?? []).map((s) => s.subSector).filter((s) => s && s !== '—'))].sort()
-  }, [sectors, sectorMap, theme, data?.stocks])
+  const setTheme = (key: ThemeKey) => {
+    setThemeState(key)
+    setPrimarySectorId(null)
+    setChildSectorId(null)
+    setSectorFilterStocks(null)
+    patchUrlParams({ theme: key, sector: null, sub: null })
+  }
 
-  const filteredStocks = useMemo(() => {
-    const stocks = data?.stocks ?? []
-    if (selectedSubSector === ALL_SUB_SECTOR) return stocks
-    return stocks.filter(
-      (stock) =>
-        stock.subSector === selectedSubSector ||
-        stock.subSector.split(' · ').includes(selectedSubSector),
-    )
-  }, [data?.stocks, selectedSubSector])
+  useEffect(() => {
+    if (!active || !filterNode) {
+      setSectorFilterStocks(null)
+      setFilterLoading(false)
+      return
+    }
+    let cancelled = false
+    setSectorFilterStocks(null)
+    setFilterLoading(true)
+    api
+      .sectorStocks(filterNode.id, true)
+      .then((res) => {
+        if (!cancelled) setSectorFilterStocks(res.data?.items ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setSectorFilterStocks([])
+      })
+      .finally(() => {
+        if (!cancelled) setFilterLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [active, filterNode])
+
+  const displayStocks = filterNode ? (sectorFilterStocks ?? []) : (data?.stocks ?? [])
+  const tableLoading = loading || (filterLoading && !!filterNode)
 
   const summary = data?.summary
 
   const filteredSummary = useMemo(() => {
-    if (selectedSubSector === ALL_SUB_SECTOR || !summary) return summary
-    const selected = filteredStocks.filter((s) => s.poolStatus === 'selected').length
-    const trading = filteredStocks.filter((s) => s.poolStatus === 'trading').length
-    const gains = filteredStocks.map((s) => s.t3Chg).filter((v): v is number => v != null)
+    if (!filterNode || !summary) return summary
+    const selected = displayStocks.filter((s) => s.poolStatus === 'selected').length
+    const trading = displayStocks.filter((s) => s.poolStatus === 'trading').length
+    const gains = displayStocks.map((s) => s.t3Chg).filter((v): v is number => v != null)
     const avgT3 = gains.length ? Math.round((gains.reduce((a, b) => a + b, 0) / gains.length) * 10) / 10 : 0
     return {
       ...summary,
-      count: filteredStocks.length,
+      count: displayStocks.length,
       selected,
       trading,
       avgT3Gain: avgT3,
+      avgChangePercent: filterNode.avgChangePercent,
     }
-  }, [summary, selectedSubSector, filteredStocks])
+  }, [summary, filterNode, displayStocks])
 
-  const displaySummary = selectedSubSector === ALL_SUB_SECTOR ? summary : filteredSummary
+  const displaySummary = filterNode ? filteredSummary : summary
   const gainCls = displaySummary && (displaySummary.avgT3Gain ?? 0) >= 0 ? 'up' : 'down'
   const dayGainCls = displaySummary && (displaySummary.avgChangePercent ?? 0) >= 0 ? 'up' : 'down'
+  const filterLabel = buildSectorFilterLabel(themeRoot, primarySectorId, childSectorId)
 
-  const selectSubSector = (name: string) => {
-    setSelectedSubSector(name)
+  const selectPrimarySector = (sectorId: string | null) => {
+    setPrimarySectorId(sectorId)
+    setChildSectorId(null)
+    setSectorFilterStocks(null)
+    patchUrlParams({ sector: sectorId, sub: null })
+  }
+
+  const selectChildSector = (sectorId: string | null) => {
+    setChildSectorId(sectorId)
+    setSectorFilterStocks(null)
+    patchUrlParams({ sub: sectorId })
   }
 
   return (
@@ -175,32 +238,57 @@ export default function ThemeModule({ active }: Props) {
           </div>
           <div className="item theme-sub-sector-item">
             <span className="label">细分板块</span>
-            <div className="theme-sub-sectors" role="group" aria-label="细分板块筛选">
-              {childSectors.length === 0 ? (
-                <span className="val" style={{ fontSize: 13, fontWeight: 500 }}>—</span>
-              ) : (
-                <>
+            <div className="theme-sub-sector-rows">
+              <div className="theme-sub-sectors" role="group" aria-label="细分板块筛选">
+                {level1Sectors.length === 0 ? (
+                  <span className="val" style={{ fontSize: 13, fontWeight: 500 }}>—</span>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={`theme-sub-sector${!primarySectorId ? ' active' : ''}`}
+                      aria-pressed={!primarySectorId}
+                      onClick={() => selectPrimarySector(null)}
+                    >
+                      {ALL_SUB_SECTOR}
+                    </button>
+                    {level1Sectors.map((sector) => (
+                      <button
+                        key={sector.id}
+                        type="button"
+                        className={`theme-sub-sector${primarySectorId === sector.id ? ' active' : ''}`}
+                        aria-pressed={primarySectorId === sector.id}
+                        onClick={() => selectPrimarySector(sector.id)}
+                      >
+                        {sector.name}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+              {primarySector && childSectors.length > 0 ? (
+                <div className="theme-sub-sectors theme-sub-sectors-child" role="group" aria-label="子细分板块筛选">
                   <button
                     type="button"
-                    className={`theme-sub-sector${selectedSubSector === ALL_SUB_SECTOR ? ' active' : ''}`}
-                    aria-pressed={selectedSubSector === ALL_SUB_SECTOR}
-                    onClick={() => selectSubSector(ALL_SUB_SECTOR)}
+                    className={`theme-sub-sector${!childSectorId ? ' active' : ''}`}
+                    aria-pressed={!childSectorId}
+                    onClick={() => selectChildSector(null)}
                   >
                     {ALL_SUB_SECTOR}
                   </button>
-                  {childSectors.map((name) => (
+                  {childSectors.map((sector) => (
                     <button
-                      key={name}
+                      key={sector.id}
                       type="button"
-                      className={`theme-sub-sector${selectedSubSector === name ? ' active' : ''}`}
-                      aria-pressed={selectedSubSector === name}
-                      onClick={() => selectSubSector(name)}
+                      className={`theme-sub-sector${childSectorId === sector.id ? ' active' : ''}`}
+                      aria-pressed={childSectorId === sector.id}
+                      onClick={() => selectChildSector(sector.id)}
                     >
-                      {name}
+                      {sector.name}
                     </button>
                   ))}
-                </>
-              )}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -224,12 +312,12 @@ export default function ThemeModule({ active }: Props) {
               </tr>
             </thead>
             <tbody id="themeTableBody">
-              {loading ? (
+              {tableLoading ? (
                 <tr><td colSpan={11} style={{ padding: 24, color: 'var(--text-muted)' }}>加载中…</td></tr>
-              ) : filteredStocks.length === 0 ? (
-                <tr><td colSpan={11} style={{ padding: 24, color: 'var(--text-muted)' }}>{selectedSubSector !== ALL_SUB_SECTOR ? '该细分板块暂无标的' : '暂无数据'}</td></tr>
+              ) : displayStocks.length === 0 ? (
+                <tr><td colSpan={11} style={{ padding: 24, color: 'var(--text-muted)' }}>{filterNode ? '该细分板块暂无标的' : '暂无数据'}</td></tr>
               ) : (
-                filteredStocks.map((stock) => (
+                displayStocks.map((stock) => (
                   <tr key={stock.id} data-theme={theme}>
                     <td className="col-sticky"><StockIdentity stock={stock} /></td>
                     <td><span className="sub-sector">{stock.subSector}</span></td>
@@ -246,7 +334,7 @@ export default function ThemeModule({ active }: Props) {
         <div className="grid-footer" id="themeFooter">
           <span>
             {data?.label ?? ''}赛道 <strong>{displaySummary?.count ?? 0}</strong> 只 · 精选 <strong>{displaySummary?.selected ?? 0}</strong> 只
-            {selectedSubSector !== ALL_SUB_SECTOR ? ` · 筛选：${selectedSubSector}` : ''}
+            {filterLabel ? ` · 筛选：${filterLabel}` : ''}
           </span>
           <span>数据来源于行业板块关联（含子板块）</span>
         </div>

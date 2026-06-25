@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import type { ChainDetail, ChainGraphData, ChainItem } from '../types'
 import { buildChainDetailFromGraph } from '../utils/industryChain'
 import { fmtPct, pctClass } from '../utils/format'
+import { getUrlParam, patchUrlParams, usePopstate } from '../utils/urlParams'
 import ChainTreemap from './ChainTreemap'
 import { SectorTag } from './StockCells'
 
@@ -19,8 +20,9 @@ export default function IndustryModule({ active, onToast }: Props) {
   const [listLoading, setListLoading] = useState(false)
   const [graphLoading, setGraphLoading] = useState(false)
 
-  const loadGraphData = useCallback(async (chainId: string) => {
+  const loadGraphData = useCallback(async (chainId: string, syncUrl = true) => {
     setViewedChainId(chainId)
+    if (syncUrl) patchUrlParams({ chain: chainId })
     setGraphLoading(true)
     try {
       const graph = await api.industryChainGraphData(chainId)
@@ -57,9 +59,22 @@ export default function IndustryModule({ active, onToast }: Props) {
   }, [active, onToast])
 
   useEffect(() => {
-    if (!active || listLoading || chainItems.length === 0 || viewedChainId) return
-    loadGraphData(chainItems[0].id)
+    if (!active || listLoading || chainItems.length === 0) return
+    const chainFromUrl = getUrlParam('chain')
+    const match = chainFromUrl ? chainItems.find((c) => c.id === chainFromUrl) : null
+    const targetId = match?.id ?? chainItems[0].id
+    if (viewedChainId === targetId) return
+    loadGraphData(targetId, !match)
   }, [active, listLoading, chainItems, viewedChainId, loadGraphData])
+
+  const syncChainFromUrl = useCallback(() => {
+    if (!active || chainItems.length === 0) return
+    const chainFromUrl = getUrlParam('chain')
+    const match = chainFromUrl ? chainItems.find((c) => c.id === chainFromUrl) : null
+    const targetId = match?.id ?? chainItems[0].id
+    if (targetId !== viewedChainId) loadGraphData(targetId, false)
+  }, [active, chainItems, viewedChainId, loadGraphData])
+  usePopstate(syncChainFromUrl)
 
   const coverage = detail?.coverage
   const hasGraph = Boolean(graphData?.nodes?.length)

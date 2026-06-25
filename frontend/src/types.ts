@@ -74,6 +74,10 @@ export interface IndustrySector {
   updateTime?: string | null
 }
 
+export interface IndustrySectorTreeNode extends IndustrySector {
+  children?: IndustrySectorTreeNode[]
+}
+
 export interface SectorStocksResponse {
   sector: IndustrySector
   stocks: Array<{

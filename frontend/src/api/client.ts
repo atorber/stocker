@@ -4,6 +4,7 @@ import type {
   ChainItem,
   DailyPoolGrid,
   IndustrySector,
+  IndustrySectorTreeNode,
   Meta,
   PoolType,
   RadarData,
@@ -40,6 +41,8 @@ export const api = {
       data: IndustrySector[]
       total: number
     }>(`/api/industry-sectors/sectors?page=${page}&page_size=${pageSize}`),
+  sectorsTree: () =>
+    get<{ code: number; message: string; data: IndustrySectorTreeNode[] }>('/api/industry-sectors/sectors-tree'),
   sectorStocks: (sectorId: string, includeDescendants = true) =>
     get<{ code: number; data: SectorStocksResponse }>(
       `/api/industry-sectors/sectors/${sectorId}/stocks?include_descendants=${includeDescendants}`,

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { RadarData } from '../types'
 import { SORT_API_MAP, fmtPrice } from '../utils/format'
+import { parseRadarSort, patchUrlParams, radarSortToParam, usePopstate } from '../utils/urlParams'
 import {
   GainCell,
   PriceCell,
@@ -27,8 +28,21 @@ interface Props {
 }
 
 export default function RadarModule({ active, onToast }: Props) {
-  const [sortLabel, setSortLabel] = useState<string>('3日')
+  const [sortLabel, setSortLabel] = useState(() => parseRadarSort())
   const [data, setData] = useState<RadarData | null>(null)
+
+  usePopstate(() => {
+    if (active) setSortLabel(parseRadarSort())
+  })
+
+  useEffect(() => {
+    if (active) setSortLabel(parseRadarSort())
+  }, [active])
+
+  const selectSort = (label: string) => {
+    setSortLabel(label)
+    patchUrlParams({ sort: radarSortToParam(label) })
+  }
 
   useEffect(() => {
     if (!active) return
@@ -56,7 +70,7 @@ export default function RadarModule({ active, onToast }: Props) {
                   key={label}
                   className={`time-pill${sortLabel === label ? ' active' : ''}`}
                   onClick={() => {
-                    setSortLabel(label)
+                    selectSort(label)
                     onToast(`已按近${label}涨幅重新排序`)
                   }}
                 >

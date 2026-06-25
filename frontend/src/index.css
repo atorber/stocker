@@ -703,11 +703,21 @@
     .theme-summary .label { font-size: 11px; color: var(--text-dim); }
     .theme-summary .val { font-size: 15px; font-weight: 600; color: var(--text-primary); }
     .theme-sub-sector-item { min-width: 0; flex: 1; }
+    .theme-sub-sector-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 2px;
+    }
     .theme-sub-sectors {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       margin-top: 2px;
+    }
+    .theme-sub-sectors-child {
+      padding-left: 10px;
+      border-left: 2px solid var(--line-subtle);
     }
     .theme-sub-sector {
       padding: 3px 10px;

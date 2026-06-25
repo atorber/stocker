@@ -5,6 +5,7 @@ import ThemeModule from './components/ThemeModule'
 import IndustryModule from './components/IndustryModule'
 import RadarModule from './components/RadarModule'
 import type { Meta, ModuleType } from './types'
+import { parseModuleTab, patchUrlParams, usePopstate } from './utils/urlParams'
 
 const NAV: { key: ModuleType; label: string }[] = [
   { key: 'pool', label: '股票池' },
@@ -14,9 +15,19 @@ const NAV: { key: ModuleType; label: string }[] = [
 ]
 
 export default function App() {
-  const [module, setModule] = useState<ModuleType>('pool')
+  const [module, setModule] = useState<ModuleType>(() => parseModuleTab())
   const [meta, setMeta] = useState<Meta | null>(null)
   const [toast, setToast] = useState('')
+
+  const syncModuleFromUrl = useCallback(() => {
+    setModule(parseModuleTab())
+  }, [])
+  usePopstate(syncModuleFromUrl)
+
+  const navigateModule = useCallback((next: ModuleType) => {
+    setModule(next)
+    patchUrlParams({ tab: next })
+  }, [])
 
   useEffect(() => {
     api.meta().then(setMeta).catch(console.error)
@@ -49,7 +60,7 @@ export default function App() {
               type="button"
               className={module === item.key ? 'active' : ''}
               data-module={item.key}
-              onClick={() => setModule(item.key)}
+              onClick={() => navigateModule(item.key)}
             >
               {item.label}
             </button>

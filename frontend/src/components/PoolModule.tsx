@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import type { Meta, PoolType, StockItem } from '../types'
 import { POOL_NAMES, POOL_TYPES } from '../utils/format'
+import { parsePoolTab, patchUrlParams, usePopstate } from '../utils/urlParams'
 import {
   GainColumns,
   GridHead,
@@ -18,7 +19,11 @@ interface Props {
 }
 
 export default function PoolModule({ active, meta }: Props) {
-  const [poolIndex, setPoolIndex] = useState(0)
+  const poolIndexFromUrl = () => {
+    const idx = POOL_TYPES.indexOf(parsePoolTab())
+    return idx >= 0 ? idx : 0
+  }
+  const [poolIndex, setPoolIndex] = useState(poolIndexFromUrl)
   const [search, setSearch] = useState('')
   const [items, setItems] = useState<StockItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,6 +43,20 @@ export default function PoolModule({ active, meta }: Props) {
   useEffect(() => {
     if (meta?.date && !dailyDate) setDailyDate(meta.date)
   }, [meta?.date, dailyDate])
+
+  const syncPoolFromUrl = useCallback(() => {
+    if (active) setPoolIndex(poolIndexFromUrl())
+  }, [active])
+  usePopstate(syncPoolFromUrl)
+
+  useEffect(() => {
+    if (active) setPoolIndex(poolIndexFromUrl())
+  }, [active])
+
+  const selectPoolTab = (index: number) => {
+    setPoolIndex(index)
+    patchUrlParams({ pool: POOL_TYPES[index] })
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -92,7 +111,7 @@ export default function PoolModule({ active, meta }: Props) {
                 className={`pool-tab${poolIndex === i ? ' active' : ''}`}
                 role="tab"
                 aria-selected={poolIndex === i}
-                onClick={() => setPoolIndex(i)}
+                onClick={() => selectPoolTab(i)}
               >
                 {name}
                 <span className="count">{tabCounts ? tabCounts[i] : '—'}</span>

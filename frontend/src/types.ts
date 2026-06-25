@@ -171,7 +171,7 @@ export interface ChainDetail {
     poolTotal: number
     poolCovered: number
     selected: number
-    avgT3Gain: number
+    avgChangePercent: number
   }
   nodes: ChainNode[]
   edges: { from: string; to: string }[]

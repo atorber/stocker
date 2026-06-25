@@ -141,9 +141,9 @@ export default function IndustryModule({ active, onToast }: Props) {
                     <span className="val mono up">{coverage?.selected}</span>
                   </div>
                   <div className="item">
-                    <span className="label">近3日均涨幅</span>
-                    <span className={`val mono ${pctClass(coverage?.avgT3Gain ?? 0)}`}>
-                      {fmtPct(coverage?.avgT3Gain ?? 0)}
+                    <span className="label">当日均涨幅</span>
+                    <span className={`val mono ${pctClass(coverage?.avgChangePercent ?? 0)}`}>
+                      {fmtPct(coverage?.avgChangePercent ?? 0)}
                     </span>
                   </div>
                 </div>

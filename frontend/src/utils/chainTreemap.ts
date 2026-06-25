@@ -26,7 +26,8 @@ function rgb(r: number, g: number, b: number) {
 function maxAbsChg(nodes: ChainGraphData['nodes']) {
   let max = 0
   for (const node of nodes) {
-    if (node.t3Chg != null) max = Math.max(max, Math.abs(node.t3Chg))
+    const chg = node.changePercent
+    if (chg != null) max = Math.max(max, Math.abs(chg))
   }
   return max
 }
@@ -116,8 +117,10 @@ function buildSegmentNode(
   })
 
   stocks.forEach((stock) => {
-    const stockColor = stockChangeColor(stock.t3Chg, maxAbs)
-    const label = stock.t3Chg != null ? `${stock.stock_name}\n${stock.t3Chg >= 0 ? '+' : ''}${stock.t3Chg}%` : stock.stock_name
+    const chg = stock.changePercent
+    const stockColor = stockChangeColor(chg, maxAbs)
+    const label =
+      chg != null ? `${stock.stock_name}\n${chg >= 0 ? '+' : ''}${chg.toFixed(1)}%` : stock.stock_name
     children.push({
       name: label,
       value: 1,

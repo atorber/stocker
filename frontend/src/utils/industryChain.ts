@@ -136,9 +136,9 @@ export function buildChainDetailFromGraph(graph: ChainGraphData): ChainDetail {
   const chain = graph.chain
   const { nodes: laidOut, edges, layerLabels } = layoutTopology(graph)
 
-  const poolNodes = laidOut.filter((n) => n.tracked)
+  const poolNodes = graph.nodes.filter((n) => n.isInBasic || n.isInSelected || n.isInTrading)
   const selected = graph.nodes.filter((n) => n.isInSelected || n.isInTrading).length
-  const gains = poolNodes.map((n) => n.t3Chg).filter((v): v is number => v != null)
+  const gains = poolNodes.map((n) => n.changePercent).filter((v): v is number => v != null)
   const avgGain = gains.length ? Math.round((gains.reduce((a, b) => a + b, 0) / gains.length) * 10) / 10 : 0
 
   const [sectorKey, sectorLabel] = sectorClass(chain.industry_category)
@@ -173,7 +173,7 @@ export function buildChainDetailFromGraph(graph: ChainGraphData): ChainDetail {
       poolTotal: laidOut.length,
       poolCovered: poolNodes.length,
       selected,
-      avgT3Gain: avgGain,
+      avgChangePercent: avgGain,
     },
     nodes: laidOut,
     edges,

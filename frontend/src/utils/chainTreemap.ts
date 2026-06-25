@@ -10,10 +10,10 @@ const NEUTRAL_STOCK = '#2a3038'
 const LEVEL0 = ['#1f6feb', '#388bfd', '#0969da', '#0550ae', '#033d8b']
 const LEVEL1 = ['#238636', '#2ea043', '#196c2e', '#116329', '#0e4429']
 const LEVEL2 = ['#9e6a03', '#bf8700', '#d4a72c', '#7d4e00', '#633c01']
-const UP_FROM = { r: 58, g: 24, b: 32 }
-const UP_TO = { r: 246, g: 70, b: 93 }
-const DOWN_FROM = { r: 16, g: 52, b: 42 }
-const DOWN_TO = { r: 14, g: 203, b: 129 }
+const UP_LIGHT = { r: 68, g: 44, b: 48 }
+const UP_DEEP = { r: 210, g: 48, b: 62 }
+const DOWN_LIGHT = { r: 44, g: 68, b: 56 }
+const DOWN_DEEP = { r: 16, g: 178, b: 118 }
 
 function lerp(a: number, b: number, t: number) {
   return Math.round(a + (b - a) * t)
@@ -21,6 +21,19 @@ function lerp(a: number, b: number, t: number) {
 
 function rgb(r: number, g: number, b: number) {
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`
+}
+
+function displayCode(code: string) {
+  return code.split('.')[0] || code
+}
+
+function stockLabel(stock: ChainGraphData['nodes'][0]) {
+  const code = displayCode(stock.stock_code || '')
+  const chg = stock.changePercent
+  if (chg != null) {
+    return `${stock.stock_name}\n${code}\n${chg >= 0 ? '+' : ''}${chg.toFixed(1)}%`
+  }
+  return `${stock.stock_name}\n${code}`
 }
 
 function maxAbsChg(nodes: ChainGraphData['nodes']) {
@@ -38,10 +51,14 @@ function stockChangeColor(chg: number | null | undefined, maxAbs: number) {
   if (chg === 0 || maxAbs <= 0) return NEUTRAL_STOCK
 
   const ratio = Math.min(Math.abs(chg) / maxAbs, 1)
-  const mix = 0.18 + ratio ** 0.75 * 0.82
-  const from = chg > 0 ? UP_FROM : DOWN_FROM
-  const to = chg > 0 ? UP_TO : DOWN_TO
-  return rgb(lerp(from.r, to.r, mix), lerp(from.g, to.g, mix), lerp(from.b, to.b, mix))
+  const mix = ratio ** 1.25
+  const light = chg > 0 ? UP_LIGHT : DOWN_LIGHT
+  const deep = chg > 0 ? UP_DEEP : DOWN_DEEP
+  return rgb(
+    lerp(light.r, deep.r, mix),
+    lerp(light.g, deep.g, mix),
+    lerp(light.b, deep.b, mix),
+  )
 }
 
 function brightness(color: string) {
@@ -119,8 +136,7 @@ function buildSegmentNode(
   stocks.forEach((stock) => {
     const chg = stock.changePercent
     const stockColor = stockChangeColor(chg, maxAbs)
-    const label =
-      chg != null ? `${stock.stock_name}\n${chg >= 0 ? '+' : ''}${chg.toFixed(1)}%` : stock.stock_name
+    const label = stockLabel(stock)
     children.push({
       name: label,
       value: 1,

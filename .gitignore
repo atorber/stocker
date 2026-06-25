@@ -143,3 +143,4 @@ vite.config.ts.timestamp-*
 .vite/
 backend/app/__pycache__/*
 docs/*
+__pycache__/*

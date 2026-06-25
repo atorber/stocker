@@ -2,6 +2,12 @@
 name = "stocker"
 version = "1.0.0"
 requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+    "pymysql>=1.1.0",
+    "python-dotenv>=1.0.0",
+]
 
 [tool.vercel]
 entrypoint = "main:app"

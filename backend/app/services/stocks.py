@@ -317,14 +317,14 @@ def get_radar(sort_field: str = "t_3_chg", limit: int = 10) -> dict[str, Any]:
     rows = fetch_all(
         f"""
         {_base_select()}
-        WHERE s.is_in_basic = 1
+        WHERE {POOL_FILTERS["selected"]}
         ORDER BY {column} DESC
         LIMIT %s
         """,
         (limit,),
     )
     stocks = _enrich_rows(rows)
-    basic_count = fetch_one("SELECT COUNT(*) AS c FROM stocks WHERE is_in_basic = 1")
+    selected_count = fetch_one("SELECT COUNT(*) AS c FROM stocks WHERE is_in_selected = 1")
     sort_labels = {
         "change_percent": "当日",
         "t_2_chg": "2日",
@@ -333,9 +333,12 @@ def get_radar(sort_field: str = "t_3_chg", limit: int = 10) -> dict[str, Any]:
         "t_5_chg": "5日",
         "t_10": "10日",
     }
+    count = int(selected_count["c"] if selected_count else 0)
     return {
         "sortField": sort_field,
         "sortLabel": sort_labels.get(sort_field, "3日"),
-        "basicCount": int(basic_count["c"] if basic_count else 0),
+        "selectedCount": count,
+        "poolCount": count,
+        "basicCount": count,
         "stocks": stocks,
     }

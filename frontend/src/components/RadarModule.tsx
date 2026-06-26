@@ -1,25 +1,37 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
-import type { RadarData } from '../types'
-import { SORT_API_MAP, fmtPrice } from '../utils/format'
-import { parseRadarSort, patchUrlParams, radarSortToParam, usePopstate } from '../utils/urlParams'
-import {
-  GainCell,
-  PriceCell,
-  SectorTag,
-  StockIdentity,
-  VolumeCell,
-} from './StockCells'
+import type { StockItem } from '../types'
+import { SORT_API_MAP, pctClass } from '../utils/format'
 
-const SORT_LABELS = ['当日', '2日', '3日', '4日', '5日', '10日'] as const
+const RADAR_COLUMNS = [
+  { key: '1日', title: '1日排行', header: '1日累计涨幅', sort: SORT_API_MAP['当日'], field: 'changePercent' as const },
+  { key: '2日', title: '2日排行', header: '2日累计涨幅', sort: SORT_API_MAP['2日'], field: 't2Chg' as const },
+  { key: '3日', title: '3日排行', header: '3日累计涨幅', sort: SORT_API_MAP['3日'], field: 't3Chg' as const },
+  { key: '4日', title: '4日排行', header: '4日累计涨幅', sort: SORT_API_MAP['4日'], field: 't4Chg' as const },
+  { key: '5日', title: '5日排行', header: '5日累计涨幅', sort: SORT_API_MAP['5日'], field: 't5Chg' as const },
+  { key: '10日', title: '10日排行', header: '10日累计涨幅', sort: SORT_API_MAP['10日'], field: 't10Chg' as const },
+] as const
 
-const SORT_FIELD_MAP: Record<string, keyof import('../types').StockItem> = {
-  当日: 'changePercent',
-  '2日': 't2Chg',
-  '3日': 't3Chg',
-  '4日': 't4Chg',
-  '5日': 't5Chg',
-  '10日': 't10Chg',
+type ColumnKey = (typeof RADAR_COLUMNS)[number]['key']
+
+interface ColumnData {
+  key: ColumnKey
+  title: string
+  header: string
+  stocks: StockItem[]
+}
+
+function fmtGain(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—'
+  const sign = value > 0 ? '+' : ''
+  return `${sign}${value.toFixed(2)}%`
+}
+
+function rankClass(rank: number): string {
+  if (rank === 1) return ' top1'
+  if (rank === 2) return ' top2'
+  if (rank === 3) return ' top3'
+  return ''
 }
 
 interface Props {
@@ -27,116 +39,99 @@ interface Props {
   onToast: (msg: string) => void
 }
 
-export default function RadarModule({ active, onToast }: Props) {
-  const [sortLabel, setSortLabel] = useState(() => parseRadarSort())
-  const [data, setData] = useState<RadarData | null>(null)
-
-  usePopstate(() => {
-    if (active) setSortLabel(parseRadarSort())
-  })
-
-  useEffect(() => {
-    if (active) setSortLabel(parseRadarSort())
-  }, [active])
-
-  const selectSort = (label: string) => {
-    setSortLabel(label)
-    patchUrlParams({ sort: radarSortToParam(label) })
-  }
+export default function RadarModule({ active }: Props) {
+  const [columns, setColumns] = useState<ColumnData[]>([])
+  const [selectedCount, setSelectedCount] = useState<number | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [hoveredStockId, setHoveredStockId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!active) return
-    const field = SORT_API_MAP[sortLabel] || 't_3_chg'
-    api.radar(field, 10).then(setData)
-  }, [active, sortLabel])
+    setLoading(true)
+    Promise.all(RADAR_COLUMNS.map((col) => api.radar(col.sort, 10)))
+      .then((results) => {
+        setColumns(
+          RADAR_COLUMNS.map((col, i) => ({
+            key: col.key,
+            title: col.title,
+            header: col.header,
+            stocks: results[i]?.stocks ?? [],
+          })),
+        )
+        setSelectedCount(
+          results[0]?.selectedCount ?? results[0]?.poolCount ?? results[0]?.basicCount ?? null,
+        )
+      })
+      .catch(() => {
+        setColumns([])
+        setSelectedCount(null)
+      })
+      .finally(() => setLoading(false))
+  }, [active])
+
+  const tracking = Boolean(hoveredStockId)
 
   return (
-    <section className={`module-panel${active ? ' active' : ''}`} id="module-radar">
-      <main className="main">
-        <div className="page-head">
-          <h1 className="page-title">热门动能排行榜</h1>
+    <section className={`module-panel radar-panel${active ? ' active' : ''}`} id="module-radar">
+      <main className="main radar-main">
+        <div className="page-head radar-page-head">
+          <h1 className="page-title">多维动能排行</h1>
           <p className="page-desc">
-            看长做短 · 能力圈内短线强势股{' '}
-            <span className="scope">— 数据源：基础股票池（{data?.basicCount ?? '—'} 只）</span>
+            看长做短 · 顺势而为
+            <span className="radar-scope-note">数据源严格限定于【精选股票池】内（{selectedCount ?? '—'} 只）</span>
           </p>
         </div>
-        <div className="control-bar">
-          <div className="view-badge">预设视图 · Top 10 截断</div>
-          <div className="control-right">
-            <span className="time-label">排序依据</span>
-            <div className="time-pills" id="radarSortPills">
-              {SORT_LABELS.map((label) => (
-                <button
-                  key={label}
-                  className={`time-pill${sortLabel === label ? ' active' : ''}`}
-                  onClick={() => {
-                    selectSort(label)
-                    onToast(`已按近${label}涨幅重新排序`)
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="grid-wrap">
-          <table className="radar-grid">
-            <thead>
-              <tr>
-                <th rowSpan={2}>排名</th>
-                <th rowSpan={2}>代码 / 名称</th>
-                <th rowSpan={2}>大方向</th>
-                <th rowSpan={2}>细分板块</th>
-                <th className="num" rowSpan={2}>最新价</th>
-                <th className="num" rowSpan={2}>入池价</th>
-                <th className="col-gain-group" colSpan={6}>累计涨幅</th>
-                <th rowSpan={2}>量能</th>
-              </tr>
-              <tr className="sub-head" id="radarSubHead">
-                {SORT_LABELS.map((label) => (
-                  <th key={label} className={`num${sortLabel === label ? ' col-sort' : ''}`}>
-                    {label}{sortLabel === label ? ' ↓' : ''}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(data?.stocks ?? []).map((stock, idx) => {
-                const rank = idx + 1
-                const rankCls = rank <= 3 ? ` top${rank}` : ''
+
+        <div
+          className={`radar-kanban-wrap${tracking ? ' is-tracking' : ''}`}
+          onMouseLeave={() => setHoveredStockId(null)}
+        >
+          {loading ? (
+            <div className="radar-loading">加载动能数据中…</div>
+          ) : (
+            <div className="radar-kanban">
+              {columns.map((col) => {
+                const colDef = RADAR_COLUMNS.find((c) => c.key === col.key)!
                 return (
-                  <tr key={stock.id}>
-                    <td><span className={`rank mono${rankCls}`}>{rank}</span></td>
-                    <td><StockIdentity stock={stock} /></td>
-                    <td><SectorTag sector={stock.macroSector} label={stock.macroSectorLabel} /></td>
-                    <td><span className="sub-sector">{stock.subSector}</span></td>
-                    <td className="num"><PriceCell value={stock.price} changePercent={stock.changePercent} /></td>
-                    <td className="num"><span className="entry-val mono">{fmtPrice(stock.entryPrice)}</span></td>
-                    {SORT_LABELS.map((label) => {
-                      const key = SORT_FIELD_MAP[label]
-                      const val = stock[key] as number | null
-                      const isSort = label === sortLabel
-                      return (
-                        <td key={label} className={`num${isSort ? ' col-sort' : ''}`}>
-                          {isSort ? (
-                            <GainCell value={val} large rank={rank <= 3 ? (rank as 1 | 2 | 3) : undefined} />
-                          ) : (
-                            <GainCell value={val} />
-                          )}
-                        </td>
-                      )
-                    })}
-                    <td><VolumeCell stock={stock} /></td>
-                  </tr>
+                  <div key={col.key} className="radar-column">
+                    <div className="radar-column-head">
+                      <span className="radar-column-title">{col.title}</span>
+                      <span className="radar-column-sub">{col.header}</span>
+                    </div>
+                    <div className="radar-rows">
+                      {col.stocks.map((stock, idx) => {
+                        const rank = idx + 1
+                        const gain = stock[colDef.field]
+                        const isActive = tracking && stock.id === hoveredStockId
+                        const isDimmed = tracking && !isActive
+                        return (
+                          <div
+                            key={`${col.key}-${stock.id}`}
+                            className={`radar-row${isActive ? ' radar-row-active' : ''}${isDimmed ? ' radar-row-dimmed' : ''}`}
+                            onMouseEnter={() => setHoveredStockId(stock.id)}
+                          >
+                            <span className={`radar-row-rank mono${rankClass(rank)}`}>{rank}</span>
+                            <div className="radar-row-body">
+                              <div className="radar-row-name">{stock.name}</div>
+                              {stock.subSector && stock.subSector !== '—' ? (
+                                <div className="radar-row-sector">{stock.subSector}</div>
+                              ) : null}
+                            </div>
+                            <span className={`radar-row-gain mono ${pctClass(gain)}`}>{fmtGain(gain)}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
                 )
               })}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
-        <div className="grid-footer">
-          <span>基础池 <strong>{data?.basicCount ?? 0}</strong> 只 · 按近{sortLabel}涨幅降序</span>
-          <span>入池价记录进入基础池时刻收盘价</span>
+
+        <div className="grid-footer radar-footer">
+          <span>6 列 Top 10 · 悬停跨列追踪动能共振</span>
+          <span>精选池 {selectedCount ?? 0} 只</span>
         </div>
       </main>
     </section>

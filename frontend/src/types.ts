@@ -182,6 +182,8 @@ export interface ChainDetail {
 export interface RadarData {
   sortField: string
   sortLabel: string
+  selectedCount: number
+  poolCount: number
   basicCount: number
   stocks: StockItem[]
 }

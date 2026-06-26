@@ -28,10 +28,10 @@ export function gainFieldKey(sortLabel: string): keyof import('../types').StockI
 
 export const SORT_API_MAP: Record<string, string> = {
   当日: 'change_percent',
-  '2日': 't_2_chg',
-  '3日': 't_3_chg',
-  '4日': 't_4_chg',
-  '5日': 't_5_chg',
+  '2日': 't_1',
+  '3日': 't_2',
+  '4日': 't_3',
+  '5日': 't_4',
   '10日': 't_10',
 }
 

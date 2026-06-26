@@ -11,6 +11,8 @@ import {
 } from '../utils/themeSectors'
 import { getUrlParam, parseThemeTab, patchUrlParams, usePopstate } from '../utils/urlParams'
 import { GainColumns, PoolCapsule, PriceCell, StockIdentity } from './StockCells'
+import { useMediaQuery } from '../hooks/useMediaQuery'
+import StockCardList from './StockCardList'
 
 const THEME_TABS: { key: ThemeKey; label: string }[] = [
   { key: 'tech', label: '科技' },
@@ -32,6 +34,7 @@ export default function ThemeModule({ active }: Props) {
   const [childSectorId, setChildSectorId] = useState<string | null>(() => getUrlParam('sub'))
   const [sectorFilterStocks, setSectorFilterStocks] = useState<StockItem[] | null>(null)
   const [filterLoading, setFilterLoading] = useState(false)
+  const isCardView = useMediaQuery('(max-width: 639px)')
 
   const sectorMap = useMemo(() => {
     const map: Partial<Record<ThemeKey, IndustrySectorTreeNode>> = {}
@@ -295,6 +298,13 @@ export default function ThemeModule({ active }: Props) {
         <p className="theme-brief" id="themeBrief">
           <strong>逻辑概要：</strong>{data?.brief || '—'}
         </p>
+        {isCardView ? (
+          <StockCardList
+            stocks={displayStocks}
+            loading={tableLoading}
+            emptyText={filterNode ? '该细分板块暂无标的' : '暂无数据'}
+          />
+        ) : (
         <div className="grid-wrap theme-grid-wrap">
           <table className="data-grid" style={{ minWidth: 1100 }}>
             <thead>
@@ -331,6 +341,7 @@ export default function ThemeModule({ active }: Props) {
             </tbody>
           </table>
         </div>
+        )}
         <div className="grid-footer" id="themeFooter">
           <span>
             {data?.label ?? ''}赛道 <strong>{displaySummary?.count ?? 0}</strong> 只 · 精选 <strong>{displaySummary?.selected ?? 0}</strong> 只

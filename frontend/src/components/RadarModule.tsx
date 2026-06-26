@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import type { StockItem } from '../types'
 import { SORT_API_MAP, pctClass } from '../utils/format'
+import { useCanHover } from '../hooks/useMediaQuery'
 
 const RADAR_COLUMNS = [
   { key: '1日', title: '1日排行', header: '1日累计涨幅', sort: SORT_API_MAP['当日'], field: 'changePercent' as const },
@@ -44,6 +45,10 @@ export default function RadarModule({ active }: Props) {
   const [selectedCount, setSelectedCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [hoveredStockId, setHoveredStockId] = useState<string | null>(null)
+  const [pinnedStockId, setPinnedStockId] = useState<string | null>(null)
+  const [snapIndex, setSnapIndex] = useState(0)
+  const kanbanRef = useRef<HTMLDivElement>(null)
+  const canHover = useCanHover()
 
   useEffect(() => {
     if (!active) return
@@ -69,7 +74,55 @@ export default function RadarModule({ active }: Props) {
       .finally(() => setLoading(false))
   }, [active])
 
-  const tracking = Boolean(hoveredStockId)
+  const activeStockId = canHover ? hoveredStockId : pinnedStockId
+  const tracking = Boolean(activeStockId)
+
+  const handleRowPointer = useCallback(
+    (stockId: string) => {
+      if (canHover) {
+        setHoveredStockId(stockId)
+        return
+      }
+      setPinnedStockId((prev) => (prev === stockId ? null : stockId))
+    },
+    [canHover],
+  )
+
+  const updateSnapIndex = useCallback(() => {
+    const el = kanbanRef.current
+    if (!el) return
+    const children = Array.from(el.children) as HTMLElement[]
+    if (!children.length) return
+    const center = el.scrollLeft + el.clientWidth / 2
+    let nearest = 0
+    let minDist = Infinity
+    children.forEach((child, i) => {
+      const childCenter = child.offsetLeft + child.offsetWidth / 2
+      const dist = Math.abs(childCenter - center)
+      if (dist < minDist) {
+        minDist = dist
+        nearest = i
+      }
+    })
+    setSnapIndex(nearest)
+  }, [])
+
+  useEffect(() => {
+    const el = kanbanRef.current
+    if (!el) return
+    const onScroll = () => updateSnapIndex()
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [columns, loading, updateSnapIndex])
+
+  const scrollToColumn = (index: number) => {
+    const el = kanbanRef.current
+    if (!el) return
+    const child = el.children[index] as HTMLElement | undefined
+    if (!child) return
+    el.scrollTo({ left: child.offsetLeft - (el.clientWidth - child.offsetWidth) / 2, behavior: 'smooth' })
+    setSnapIndex(index)
+  }
 
   return (
     <section className={`module-panel radar-panel${active ? ' active' : ''}`} id="module-radar">
@@ -82,14 +135,32 @@ export default function RadarModule({ active }: Props) {
           </p>
         </div>
 
+        <div className="radar-snap-indicator" aria-hidden="true">
+          {RADAR_COLUMNS.map((col, i) => (
+            <button
+              key={col.key}
+              type="button"
+              className={`radar-snap-dot${snapIndex === i ? ' active' : ''}`}
+              aria-label={col.title}
+              onClick={() => scrollToColumn(i)}
+            />
+          ))}
+          <span className="radar-snap-label">{RADAR_COLUMNS[snapIndex]?.title ?? ''}</span>
+        </div>
+
         <div
           className={`radar-kanban-wrap${tracking ? ' is-tracking' : ''}`}
-          onMouseLeave={() => setHoveredStockId(null)}
+          onMouseLeave={canHover ? () => setHoveredStockId(null) : undefined}
+          onClick={(e) => {
+            if (canHover) return
+            if ((e.target as HTMLElement).closest('.radar-row')) return
+            setPinnedStockId(null)
+          }}
         >
           {loading ? (
             <div className="radar-loading">加载动能数据中…</div>
           ) : (
-            <div className="radar-kanban">
+            <div className="radar-kanban" ref={kanbanRef}>
               {columns.map((col) => {
                 const colDef = RADAR_COLUMNS.find((c) => c.key === col.key)!
                 return (
@@ -102,13 +173,14 @@ export default function RadarModule({ active }: Props) {
                       {col.stocks.map((stock, idx) => {
                         const rank = idx + 1
                         const gain = stock[colDef.field]
-                        const isActive = tracking && stock.id === hoveredStockId
+                        const isActive = tracking && stock.id === activeStockId
                         const isDimmed = tracking && !isActive
                         return (
                           <div
                             key={`${col.key}-${stock.id}`}
                             className={`radar-row${isActive ? ' radar-row-active' : ''}${isDimmed ? ' radar-row-dimmed' : ''}`}
-                            onMouseEnter={() => setHoveredStockId(stock.id)}
+                            onMouseEnter={canHover ? () => handleRowPointer(stock.id) : undefined}
+                            onClick={!canHover ? () => handleRowPointer(stock.id) : undefined}
                           >
                             <span className={`radar-row-rank mono${rankClass(rank)}`}>{rank}</span>
                             <div className="radar-row-body">
@@ -130,7 +202,8 @@ export default function RadarModule({ active }: Props) {
         </div>
 
         <div className="grid-footer radar-footer">
-          <span>6 列 Top 10 · 悬停跨列追踪动能共振</span>
+          <span className="radar-footer-hint-desktop">6 列 Top 10 · 悬停跨列追踪动能共振</span>
+          <span className="radar-footer-hint-mobile">左右滑动切换周期 · 点击股票跨列追踪</span>
           <span>精选池 {selectedCount ?? 0} 只</span>
         </div>
       </main>

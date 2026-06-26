@@ -12,6 +12,8 @@ import {
   StockIdentity,
 } from './StockCells'
 import { fmtPrice } from '../utils/format'
+import { useMediaQuery } from '../hooks/useMediaQuery'
+import StockCardList from './StockCardList'
 
 interface Props {
   active: boolean
@@ -34,6 +36,7 @@ export default function PoolModule({ active, meta }: Props) {
   const poolType = POOL_TYPES[poolIndex]
   const isTrading = poolIndex === 3
   const isDaily = poolIndex === 0
+  const isCardView = useMediaQuery('(max-width: 639px)')
 
   const availableDates = useMemo(
     () => meta?.dailyAvailableDates ?? [],
@@ -175,7 +178,27 @@ export default function PoolModule({ active, meta }: Props) {
           </div>
         </div>
 
-        <div className={`grid-wrap pool-grid-default${isTrading ? ' hidden' : ''}`} id="poolGridDefault">
+        {isCardView ? (
+          <>
+            <StockCardList
+              stocks={items}
+              loading={loading}
+              emptyText="暂无数据"
+              variant={isTrading ? 'trading' : 'default'}
+            />
+            <div className="grid-footer">
+              <span>
+                {isDaily ? (
+                  <>共 <strong>{items.length}</strong> 只标的 · <strong>{dailyReportCount}</strong> 份研报</>
+                ) : (
+                  <>共 <strong>{items.length}</strong> 只标的</>
+                )}
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+        <div className={`grid-wrap pool-grid-default desktop-data-view${isTrading ? ' hidden' : ''}`} id="poolGridDefault">
           <table className="data-grid">
             <GridHead />
             <tbody>
@@ -210,7 +233,7 @@ export default function PoolModule({ active, meta }: Props) {
           </div>
         </div>
 
-        <div className={`grid-wrap pool-grid-trading${isTrading ? ' visible' : ''}`} id="poolGridTrading">
+        <div className={`grid-wrap pool-grid-trading desktop-data-view${isTrading ? ' visible' : ''}`} id="poolGridTrading">
           <table className="data-grid" style={{ minWidth: 1400 }}>
             <GridHead trading />
             <tbody>
@@ -249,6 +272,8 @@ export default function PoolModule({ active, meta }: Props) {
             <span>成本价为实际买入价</span>
           </div>
         </div>
+          </>
+        )}
       </main>
     </section>
   )

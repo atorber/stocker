@@ -50,7 +50,7 @@ export function parseRadarSort(): string {
 }
 
 export function radarSortToParam(sortLabel: string): string {
-  return SORT_API_MAP[sortLabel] || 't_3_chg'
+  return SORT_API_MAP[sortLabel] || 't_2'
 }
 
 export function usePopstate(callback: () => void) {

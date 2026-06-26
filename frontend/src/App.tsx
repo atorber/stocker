@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api/client'
+import BottomNav from './components/BottomNav'
 import PoolModule from './components/PoolModule'
 import ThemeModule from './components/ThemeModule'
 import IndustryModule from './components/IndustryModule'
@@ -53,7 +54,7 @@ export default function App() {
           <div className="brand-mark">S</div>
           Stocker
         </div>
-        <nav className="global-nav">
+        <nav className="global-nav desktop-nav">
           {NAV.map((item) => (
             <button
               key={item.key}
@@ -73,6 +74,8 @@ export default function App() {
       <ThemeModule active={module === 'theme'} />
       <IndustryModule active={module === 'industry'} onToast={showToast} />
       <RadarModule active={module === 'radar'} onToast={showToast} />
+
+      <BottomNav module={module} onNavigate={navigateModule} />
 
       <div className={`toast${toast ? ' show' : ''}`} id="toast">{toast}</div>
       <div className="spec-badge"><strong>Stocker</strong> · v1.0</div>

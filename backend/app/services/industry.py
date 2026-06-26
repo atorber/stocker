@@ -107,7 +107,7 @@ def get_chain_detail(chain_id: str) -> dict[str, Any]:
         SELECT
             cn.id, cn.stock_code, cn.stock_name, cn.position_x, cn.position_y,
             cs.name AS segment_name, cs.segment_type,
-            s.is_in_basic, s.is_in_selected, s.is_in_trading, s.t_3_chg
+            s.is_in_basic, s.is_in_selected, s.is_in_trading, s.t_2
         FROM chain_nodes cn
         JOIN chain_segments cs ON cn.segment_id = cs.id
         LEFT JOIN stocks s ON cn.stock_code = s.code OR cn.stock_id = s.id
@@ -126,7 +126,7 @@ def get_chain_detail(chain_id: str) -> dict[str, Any]:
             continue
         seen.add(code)
         in_pool = bool(row.get("is_in_basic") or row.get("is_in_selected") or row.get("is_in_trading"))
-        t3 = _fmt_pct(row.get("t_3_chg"))
+        t3 = _fmt_pct(row.get("t_2"))
         nodes.append(
             {
                 "id": row["id"],

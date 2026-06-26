@@ -289,7 +289,7 @@ def get_graph_data(chain_id: str) -> dict[str, Any] | None:
             SELECT cn.id, cn.segment_id, cn.stock_id, cn.stock_code, cn.stock_name,
                    cn.company_name, cn.description, cn.position_x, cn.position_y,
                    cn.created_at, cn.updated_at,
-                   s.is_in_basic, s.is_in_selected, s.is_in_trading, s.t_3_chg, s.change_percent
+                   s.is_in_basic, s.is_in_selected, s.is_in_trading, s.t_2, s.change_percent
             FROM chain_nodes cn
             {_STOCK_JOIN}
             WHERE cn.segment_id = %s
@@ -308,7 +308,7 @@ def get_graph_data(chain_id: str) -> dict[str, Any] | None:
                     "isInBasic": bool(node.get("is_in_basic")),
                     "isInSelected": bool(node.get("is_in_selected")),
                     "isInTrading": bool(node.get("is_in_trading")),
-                    "t3Chg": _fmt_pct(node.get("t_3_chg")),
+                    "t3Chg": _fmt_pct(node.get("t_2")),
                     "changePercent": _num(node.get("change_percent"), 0),
                 }
             )

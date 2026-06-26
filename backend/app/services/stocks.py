@@ -35,10 +35,10 @@ POOL_FILTERS = {
 
 SORT_FIELDS = {
     "change_percent": "s.change_percent",
-    "t_2_chg": "s.t_2_chg",
-    "t_3_chg": "s.t_3_chg",
-    "t_4_chg": "s.t_4_chg",
-    "t_5_chg": "s.t_5_chg",
+    "t_1": "s.t_1",
+    "t_2": "s.t_2",
+    "t_3": "s.t_3",
+    "t_4": "s.t_4",
     "t_10": "s.t_10",
 }
 
@@ -112,7 +112,7 @@ def _base_select() -> str:
     return """
         SELECT
             s.id, s.code, s.name, s.price, s.change_percent,
-            s.t_2_chg, s.t_3_chg, s.t_4_chg, s.t_5_chg, s.t_10,
+            s.t_1, s.t_2, s.t_3, s.t_4, s.t_10,
             s.is_in_basic, s.is_in_selected, s.is_in_trading,
             s.pre_close, s.close_t3, s.close_t5, s.turnover_rate,
             sec.name AS sub_sector,
@@ -157,10 +157,10 @@ def _enrich_rows(rows: list[dict[str, Any]], cost_map: dict[str, float] | None =
                 "entryPrice": entry_price,
                 "costPrice": round(cost_price, 2) if cost_price else None,
                 "changePercent": _fmt_pct(row.get("change_percent")),
-                "t2Chg": _fmt_pct(row.get("t_2_chg")),
-                "t3Chg": _fmt_pct(row.get("t_3_chg")),
-                "t4Chg": _fmt_pct(row.get("t_4_chg")),
-                "t5Chg": _fmt_pct(row.get("t_5_chg")),
+                "t2Chg": _fmt_pct(row.get("t_1")),
+                "t3Chg": _fmt_pct(row.get("t_2")),
+                "t4Chg": _fmt_pct(row.get("t_3")),
+                "t5Chg": _fmt_pct(row.get("t_4")),
                 "t10Chg": _fmt_pct(row.get("t_10")),
                 "poolStatus": status_key,
                 "poolStatusLabel": status_label,
@@ -312,8 +312,8 @@ def get_all_themes_summary() -> list[dict[str, Any]]:
     return result
 
 
-def get_radar(sort_field: str = "t_3_chg", limit: int = 10) -> dict[str, Any]:
-    column = SORT_FIELDS.get(sort_field, SORT_FIELDS["t_3_chg"])
+def get_radar(sort_field: str = "t_2", limit: int = 10) -> dict[str, Any]:
+    column = SORT_FIELDS.get(sort_field, SORT_FIELDS["t_2"])
     rows = fetch_all(
         f"""
         {_base_select()}
@@ -327,10 +327,10 @@ def get_radar(sort_field: str = "t_3_chg", limit: int = 10) -> dict[str, Any]:
     selected_count = fetch_one("SELECT COUNT(*) AS c FROM stocks WHERE is_in_selected = 1")
     sort_labels = {
         "change_percent": "当日",
-        "t_2_chg": "2日",
-        "t_3_chg": "3日",
-        "t_4_chg": "4日",
-        "t_5_chg": "5日",
+        "t_1": "2日",
+        "t_2": "3日",
+        "t_3": "4日",
+        "t_4": "5日",
         "t_10": "10日",
     }
     count = int(selected_count["c"] if selected_count else 0)

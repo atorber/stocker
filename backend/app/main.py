@@ -72,7 +72,7 @@ def chain_detail(chain_id: str):
 
 
 @app.get("/api/radar")
-def radar(sort: str = Query(default="t_3_chg"), limit: int = Query(default=10, le=50)):
+def radar(sort: str = Query(default="t_2"), limit: int = Query(default=10, le=50)):
     return stocks.get_radar(sort, limit)
 
 
